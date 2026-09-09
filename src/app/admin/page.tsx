@@ -35,6 +35,10 @@ export default function AdminDashboard() {
       .select('*')
       .order('upload_date', { ascending: false })
 
+    if (error) {
+      console.error('Error fetching history:', error)
+    }
+
     if (data) {
       // Generate QR codes for all history items
       const itemsWithQr = await Promise.all(
