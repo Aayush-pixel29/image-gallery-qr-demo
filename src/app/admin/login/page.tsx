@@ -39,6 +39,9 @@ export default function LoginPage() {
           <h2 className="mt-2 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
             Admin Login
           </h2>
+          <p className="mt-2 text-center text-xs text-red-500 break-all font-mono">
+            Debug Key: {String(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY).substring(0, 20)}...
+          </p>
           <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
             Sign in to manage gallery images
           </p>
