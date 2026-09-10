@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimiter } from '@/lib/rate-limit'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
-import { Download } from 'lucide-react'
+import { DownloadButton } from '@/components/download-button'
 
 // Revalidate this page every request (dynamic)
 export const dynamic = 'force-dynamic'
@@ -50,14 +50,11 @@ export default async function PublicImagePage({ params }: { params: { id: string
           <h1 className="font-semibold text-gray-900 dark:text-white truncate pr-4">
             {image.title}
           </h1>
-          <a
-            href={signedData.signedUrl}
-            download={image.title}
-            className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shrink-0 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-          >
-            <Download className="w-4 h-4" />
-            Download
-          </a>
+          <DownloadButton
+            url={signedData.signedUrl}
+            filename={`${image.title}.jpg`}
+            className="flex items-center justify-center bg-black text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shrink-0 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+          />
         </div>
         <div className="p-8 flex items-center justify-center bg-white dark:bg-gray-800">
           {/* eslint-disable-next-line @next/next/no-img-element */}
