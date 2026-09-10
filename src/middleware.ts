@@ -27,26 +27,46 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  const ADMIN_EMAIL = 'shelaraayush535@gmail.com'
+
   // Refresh session if expired
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect /admin routes (except /admin/login)
-  if (request.nextUrl.pathname.startsWith('/admin') && !request.nextUrl.pathname.startsWith('/admin/login')) {
+  const path = request.nextUrl.pathname
+  const isAdminPath = path.startsWith('/admin') && !path.startsWith('/admin/login')
+  const isAuthPage = path === '/login' || path === '/signup' || path === '/admin/login'
+  const isPublicScan = path.startsWith('/i/')
+  
+  // 1. Keep QR Scan paths public
+  if (isPublicScan) {
+    return supabaseResponse
+  }
+
+  // 2. Protect Admin Paths
+  if (isAdminPath) {
     if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/admin/login'
-      return NextResponse.redirect(url)
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+    if (user.email !== ADMIN_EMAIL) {
+      return NextResponse.redirect(new URL('/', request.url)) // redirect normal users away from admin
     }
   }
 
-  // Redirect /admin/login to /admin if already logged in
-  if (request.nextUrl.pathname.startsWith('/admin/login')) {
-    if (user) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/admin'
-      return NextResponse.redirect(url)
+  // 3. Protect Root (Gallery)
+  if (path === '/') {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+  }
+
+  // 4. Redirect logged-in users away from auth pages
+  if (isAuthPage && user) {
+    if (user.email === ADMIN_EMAIL && path === '/admin/login') {
+      return NextResponse.redirect(new URL('/admin', request.url))
+    } else {
+      return NextResponse.redirect(new URL('/', request.url))
     }
   }
 
