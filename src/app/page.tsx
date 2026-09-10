@@ -2,8 +2,9 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, LogOut, Download } from 'lucide-react'
+import { Loader2, LogOut, QrCode } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import QRCode from 'qrcode'
 
 interface ImageRecord {
   id: string
@@ -16,6 +17,89 @@ interface GalleryItem extends ImageRecord {
   signedUrl: string
 }
 
+function GalleryCard({ item }: { item: GalleryItem }) {
+  const [isFlipped, setIsFlipped] = useState(false)
+  const [qrUrl, setQrUrl] = useState<string>('')
+
+  useEffect(() => {
+    // Generate the exact same QR code the admin uses
+    const url = `${window.location.origin}/i/${item.id}`
+    QRCode.toDataURL(url, { margin: 2, width: 300, color: { dark: '#000000', light: '#ffffff' } })
+      .then(setQrUrl)
+      .catch(console.error)
+  }, [item.id])
+
+  return (
+    <div 
+      className="relative break-inside-avoid mb-6 cursor-pointer group"
+      style={{ perspective: '1500px' }}
+      onClick={() => setIsFlipped(!isFlipped)}
+    >
+      <div 
+        className="w-full relative transition-all duration-700 ease-in-out"
+        style={{ 
+          transformStyle: 'preserve-3d', 
+          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' 
+        }}
+      >
+        {/* FRONT SIDE (Image) */}
+        <div 
+          className="w-full bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm group-hover:shadow-lg transition-shadow relative"
+          style={{ backfaceVisibility: 'hidden' }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={item.signedUrl}
+            alt={item.title}
+            className="w-full h-auto object-cover block"
+            loading="lazy"
+          />
+          {/* Subtle overlay gradient at the bottom for title visibility */}
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-4 pt-12 flex justify-between items-end">
+            <p className="text-white font-medium truncate drop-shadow-md">{item.title}</p>
+            <div className="bg-white/20 backdrop-blur-md rounded-full p-2">
+              <QrCode className="w-5 h-5 text-white" />
+            </div>
+          </div>
+        </div>
+
+        {/* BACK SIDE (QR Code) */}
+        <div 
+          className="absolute inset-0 w-full h-full bg-indigo-50 dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg flex flex-col items-center justify-center p-6 border-2 border-indigo-500"
+          style={{ 
+            backfaceVisibility: 'hidden', 
+            transform: 'rotateY(180deg)' 
+          }}
+        >
+          <h3 className="text-xl font-extrabold text-indigo-900 dark:text-white mb-2 text-center">
+            Scan to Download
+          </h3>
+          <p className="text-sm text-indigo-700 dark:text-gray-300 mb-6 text-center font-medium truncate w-full">
+            {item.title}
+          </p>
+          
+          <div className="bg-white p-3 rounded-2xl shadow-xl shadow-indigo-200 dark:shadow-none">
+            {qrUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qrUrl} alt="QR Code" className="w-48 h-48 sm:w-56 sm:h-56 object-contain" />
+              </>
+            ) : (
+              <div className="w-48 h-48 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+              </div>
+            )}
+          </div>
+          
+          <p className="mt-6 text-xs text-gray-500 dark:text-gray-400 text-center uppercase tracking-widest font-bold">
+            Tap to flip back
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function UserDashboard() {
   const [images, setImages] = useState<GalleryItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -24,7 +108,6 @@ export default function UserDashboard() {
 
   const fetchGallery = useCallback(async () => {
     setLoading(true)
-    // Fetch all active images
     const { data: dbImages, error: dbError } = await supabase
       .from('images')
       .select('*')
@@ -38,11 +121,10 @@ export default function UserDashboard() {
     }
 
     if (dbImages && dbImages.length > 0) {
-      // Batch generate signed URLs for thumbnail viewing
       const paths = dbImages.map((img) => img.storage_path)
       const { data: signedUrlsData, error: signedUrlsError } = await supabase.storage
         .from('gallery-images')
-        .createSignedUrls(paths, 60 * 60) // 1 hour expiry
+        .createSignedUrls(paths, 60 * 60)
 
       if (signedUrlsError) {
         console.error('Error generating signed URLs:', signedUrlsError)
@@ -71,35 +153,14 @@ export default function UserDashboard() {
     router.refresh()
   }
 
-  const handleDownload = async (item: GalleryItem) => {
-    try {
-      // Fetch the image as a blob
-      const response = await fetch(item.signedUrl)
-      const blob = await response.blob()
-      
-      // Create a temporary link and trigger download
-      const blobUrl = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = blobUrl
-      link.download = item.storage_path.split('/').pop() || 'download.jpg'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(blobUrl)
-    } catch (err) {
-      console.error('Download failed:', err)
-      alert('Failed to download image.')
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Navbar */}
-      <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-2xl font-black bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
                 Public Gallery
               </h1>
             </div>
@@ -119,45 +180,20 @@ export default function UserDashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+          <div className="flex justify-center items-center h-[60vh]">
+            <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
           </div>
         ) : images.length === 0 ? (
-          <div className="text-center py-12">
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No images</h3>
+          <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <h3 className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">No images available</h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              The gallery is currently empty.
+              The gallery is currently empty. Check back later!
             </p>
           </div>
         ) : (
-          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-6 space-y-6">
+          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-6">
             {images.map((item) => (
-              <div
-                key={item.id}
-                className="break-inside-avoid bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group relative"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.signedUrl}
-                  alt={item.title}
-                  className="w-full h-auto object-cover"
-                  loading="lazy"
-                />
-                
-                {/* Hover Overlay */}
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex flex-col justify-end p-4">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <p className="text-white font-medium truncate mb-2">{item.title}</p>
-                    <button
-                      onClick={() => handleDownload(item)}
-                      className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <GalleryCard key={item.id} item={item} />
             ))}
           </div>
         )}
