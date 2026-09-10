@@ -65,35 +65,22 @@ function GalleryCard({ item }: { item: GalleryItem }) {
 
         {/* BACK SIDE (QR Code) */}
         <div 
-          className="absolute inset-0 w-full h-full bg-indigo-50 dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg flex flex-col items-center justify-center p-6 border-2 border-indigo-500"
+          className="absolute inset-0 w-full h-full bg-indigo-50 dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg flex flex-col items-center justify-center p-2 sm:p-3 border-2 border-indigo-500"
           style={{ 
             backfaceVisibility: 'hidden', 
             transform: 'rotateY(180deg)' 
           }}
         >
-          <h3 className="text-xl font-extrabold text-indigo-900 dark:text-white mb-2 text-center">
-            Scan to Download
-          </h3>
-          <p className="text-sm text-indigo-700 dark:text-gray-300 mb-6 text-center font-medium truncate w-full">
-            {item.title}
-          </p>
-          
-          <div className="bg-white p-3 rounded-2xl shadow-xl shadow-indigo-200 dark:shadow-none">
+          <div className="w-full h-full bg-white rounded-lg flex items-center justify-center p-2">
             {qrUrl ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrUrl} alt="QR Code" className="w-48 h-48 sm:w-56 sm:h-56 object-contain" />
+                <img src={qrUrl} alt="QR Code" className="w-full h-full object-contain" />
               </>
             ) : (
-              <div className="w-48 h-48 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-              </div>
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
             )}
           </div>
-          
-          <p className="mt-6 text-xs text-gray-500 dark:text-gray-400 text-center uppercase tracking-widest font-bold">
-            Tap to flip back
-          </p>
         </div>
       </div>
     </div>
